@@ -70,7 +70,7 @@ Use the +cd+ built-in to move between scopes:
   GET /my_index/my_type > cd /other_index/other_type
   GET /other_index/other_type > cd ..
   GET /other_index > cd
-  GET /
+  GET / >
 
 Tab-complete within a scope after typing +cd+ to see what other scopes
 live under this one.
@@ -103,8 +103,7 @@ Commands will also accept a query string, as in this example of a
 search through +my_index+:
 
   GET /my_index > _search?q=foo+AND+bar
-  {...}
-
+  
 ==== Commands with query bodies  
 
 In this example the query <tt>foo AND bar</tt> was passed via the
@@ -113,7 +112,6 @@ put the query in the body of the request.  If you're willing to forego
 using spaces you can do this right on the same line:
 
   GET /my_index > _search {"query":{"query_string":{"query":"foo"}}}
-  {...}
 
 But if you want more expressiveness you can either name a file (with
 tab-completion) that contains the body you want:
@@ -130,7 +128,6 @@ tab-completion) that contains the body you want:
 followed by
 
   GET /my_index > _search /tmp/query.json
-  {...}
 
 Or you can do +cat+-style, pasting the query into the shell, by using
 the <tt>-</tt> character:
@@ -143,7 +140,6 @@ the <tt>-</tt> character:
       }
     }
   }  
-  {...}
 
 Don't forget to use <tt>Ctrl-D</tt> to send an +EOF+ to flush the
 input of the query.
@@ -166,3 +162,6 @@ one.  Here's the same thing in two steps:
 
   GET / > PUT
   PUT / > /my_new_index
+
+Non-ambiguous shortcuts for HTTP verbs will also work, e.g. - +pu+ in
+this case for +PUT+.
