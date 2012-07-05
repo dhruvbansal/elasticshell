@@ -57,9 +57,9 @@ example:
 
 This prompt tells us three things:
 
-1) The default HTTP verb we're using for requests is +GET+.
-2) The default API "scope" we're in is <tt>/my_index/my_type</tt>.
-3) Elasticshell will print raw responses from the database -- this is
+1. The default HTTP verb we're using for requests is +GET+.
+2. The default API "scope" we're in is <tt>/my_index/my_type</tt>.
+3. Elasticshell will print raw responses from the database -- this is
 the <tt>></tt> at the end of the prompt.  If we were in pretty-print
 mode, this would become a <tt>$</tt>
 
