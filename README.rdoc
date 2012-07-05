@@ -186,3 +186,22 @@ one.  Here's the same thing in two steps:
 
 Non-ambiguous shortcuts for HTTP verbs will also work, e.g. - +pu+ in
 this case for +PUT+.
+
+=== Running just a single command
+
+Instead of running Elasticshell interactively, you can exit after
+running only a single command by using the <tt>--only</tt> option on
+startup.  For example,
+
+  $ es --only /_cluster/health
+
+will output the cluster health and exit immediately.  This can be
+combined with the <tt>--pretty</tt> option for readability.
+
+The <tt>--only</tt> option can also be passed a <tt>.</tt>-separated
+hierarchical list of keys to slice into the resulting object.  This is
+useful when trying to drill into a large amount of data returned by
+Elasticsearch.  The example from the start of this file is relevant
+again here:
+
+  $ es /_status --only=indices.my_index.docs.num_docs

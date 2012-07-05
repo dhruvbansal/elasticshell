@@ -105,13 +105,17 @@ EOF
 
     def print obj, ignore_only=false
       if self.only && !ignore_only
-        only_parts = self.only.to_s.split('.')
-        obj_to_print = obj
-        while obj_to_print && only_parts.size > 0
-          this_only = only_parts.shift
-          obj_to_print = (obj_to_print || {})[this_only]
+        if self.only == true
+          print(obj, true)
+        else
+          only_parts = self.only.to_s.split('.')
+          obj_to_print = obj
+          while obj_to_print && only_parts.size > 0
+            this_only = only_parts.shift
+            obj_to_print = (obj_to_print || {})[this_only]
+          end
+          print(obj_to_print, true)
         end
-        print(obj_to_print, true)
       else
         case
         when obj.nil?
