@@ -75,6 +75,27 @@ Use the +cd+ built-in to move between scopes:
 Tab-complete within a scope after typing +cd+ to see what other scopes
 live under this one.
 
+=== Changing HTTP Verb
+
+You can change Elasticsearch's default HTTP verb by giving it one.
+Here's the same thing in two steps:
+
+  GET / > PUT
+  PUT / > /my_new_index
+
+Non-ambiguous shortcuts for HTTP verbs will also work, e.g. - +pu+ in
+this case for +PUT+.
+
+=== Changing Prettiness
+
+Typing +pretty+ at any time will toggle Elasticsearch's
+pretty-printing format on or off.
+
+  GET / > pretty
+  GET / $
+
+The <tt>$</tt>-sign means it's pretty...
+
 === Running Commands
 
 There are a lot of different ways of telling Elasticsearch what you
