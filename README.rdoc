@@ -1,0 +1,23 @@
+= Elasticshell
+
+Elasticsearch[http://www.elasticsearch.org] is a wonderful database
+for performing full-text on rich documents at terabyte-scale.
+
+It's already pretty easy to talk to Elasticsearch.  You can
+
+- use the HTTP-based, REST API via commmand-line tools like curl, your
+  favorite HTTP library, or even your browser's URL bar
+
+- use the interface built on Apache Thrift
+
+- use the native Java classes
+
+What's missing was a command-line shell that let you directly inspect
+Elasticsearch's "filesystem" or "database schema", run queries, and in
+general muck about.  I got sick of writing things like
+
+$ curl -s -X GET "http://localhost:9200/_status" | ruby -rjson -e 'puts JSON.parse($stdin.read)["indices"]["my_index"]["docs"]["num_docs"]'
+
+How about
+
+$ es /_status --only=indices.my_index.docs.num_docs
