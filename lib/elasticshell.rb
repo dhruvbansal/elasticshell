@@ -13,6 +13,14 @@ Settings.define(:only,    :description => "A dot-separated hierarchical key to e
 Settings.define(:pretty,  :description => "Pretty-print all output. ", :default => false, :type => :boolean)
 Settings.define(:verb,    :description => "Set the default HTTP verb. ", :default => "GET")
 Settings.define(:version, :description => "Print Elasticshell version and exit. ", :default => false, :type => :boolean)
+Settings.description = <<-DESC
+Elasticshell is a command-line shell for interacting with an
+Elasticsearch database.  It has the following start-up options.
+DESC
+
+def Settings.usage
+  "usage: #{File.basename($0)} [OPTIONS] [SCOPE]"
+end
 Settings.resolve!
 
 module Elasticshell

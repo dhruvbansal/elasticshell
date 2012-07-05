@@ -117,9 +117,9 @@ EOF
           print(obj_to_print, true)
         end
       else
-        case
-        when obj.nil?
-        when obj.is_a?(String)
+        case obj
+        when nil
+        when String, Fixnum
           puts obj
         else
           if pretty?
