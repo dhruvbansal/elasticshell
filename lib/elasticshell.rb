@@ -12,6 +12,7 @@ Settings.define(:servers, :description => "A comma-separated list of Elasticsear
 Settings.define(:only,    :description => "A dot-separated hierarchical key to extract from the output scope.")
 Settings.define(:pretty,  :description => "Pretty-print all output. ", :default => false, :type => :boolean)
 Settings.define(:verb,    :description => "Set the default HTTP verb. ", :default => "GET")
+Settings.define(:version, :description => "Print Elasticshell version and exit. ", :default => false, :type => :boolean)
 Settings.resolve!
 
 module Elasticshell
@@ -25,6 +26,11 @@ module Elasticshell
   end
   
   def self.start *args
+    if Settings[:version]
+      puts version
+      exit()
+    end
+    
     es = Shell.new(Settings)
     if Settings[:only]
       if Settings.rest.length == 0

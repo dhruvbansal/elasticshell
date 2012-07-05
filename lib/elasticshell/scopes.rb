@@ -57,7 +57,7 @@ module Elasticshell
     def initialize path, options
       self.path     = path
       self.client   = options[:client]
-      self.contents = []
+      self.contents = initial_contents
     end
 
     def to_s
@@ -105,8 +105,12 @@ module Elasticshell
     def fetch_contents
     end
 
+    def initial_contents
+      []
+    end
+
     def reset!
-      self.contents = []
+      self.contents = initial_contents
       true
     end
 

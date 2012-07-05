@@ -12,14 +12,16 @@ module Elasticshell
 
       def commands
         {
-          '_status'  => "Retreive the status of all indices in the cluster.",
-          '_cluster' => "Enter the _cluster scope.",
-          '_nodes'   => "Enter the _nodes scope.",
+          '_status'  => "Retreive the status of all indices in the cluster."
         }
       end
 
+      def initial_contents
+        ['_cluster', '_nodes']
+      end
+
       def fetch_contents
-        @contents = client.safely(:get, {:index => '_status'}, :return => {"indices" => {}})["indices"].keys
+        self.contents += client.safely(:get, {:index => '_status'}, :return => {"indices" => {}})["indices"].keys
       end
 
       def index name, options={}

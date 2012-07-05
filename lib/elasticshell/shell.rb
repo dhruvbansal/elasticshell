@@ -164,8 +164,10 @@ EOF
         b = File.read(path)
       when path && path == '-'
         b = $stdin.gets(nil)
+      when path
+        b = path
       else
-        b = ''
+        b = (command.split(' ', 2).last || '')
       end
       
       [c, o, b]

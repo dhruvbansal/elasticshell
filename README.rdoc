@@ -5,19 +5,164 @@ for performing full-text on rich documents at terabyte-scale.
 
 It's already pretty easy to talk to Elasticsearch.  You can
 
-- use the HTTP-based, REST API via commmand-line tools like curl, your
-  favorite HTTP library, or even your browser's URL bar
+- use the HTTP-based, {REST
+  API}[http://www.elasticsearch.org/guide/reference/api/] via
+  commmand-line tools like curl[http://en.wikipedia.org/wiki/CURL], your favorite HTTP library, or even
+  your browser's URL bar
 
 - use the interface built on Apache Thrift
 
-- use the native Java classes
+- use the native {Java classes}[http://www.elasticsearch.org/guide/reference/java-api/]
 
 What's missing was a command-line shell that let you directly inspect
 Elasticsearch's "filesystem" or "database schema", run queries, and in
 general muck about.  I got sick of writing things like
 
-$ curl -s -X GET "http://localhost:9200/_status" | ruby -rjson -e 'puts JSON.parse($stdin.read)["indices"]["my_index"]["docs"]["num_docs"]'
+  $ curl -s -X GET "http://localhost:9200/_status" | ruby -rjson -e 'puts JSON.parse($stdin.read)["indices"]["my_index"]["docs"]["num_docs"]'
 
 How about
 
-$ es /_status --only=indices.my_index.docs.num_docs
+  $ es /_status --only=indices.my_index.docs.num_docs
+
+== Installation
+
+Installing Elasticshell should be as simple as installing the gem:
+
+  $ sudo gem install elasticshell
+
+This should install a binary program 'es' that you can run from the
+command line to start Elasticshell.  Try
+
+  $ es --help
+
+right now to see that everything is properly installed.  You'll also
+see a brief survey of Elasticshell's startup options.
+
+== Usage
+
+To start an Elasticshell session, just run
+
+  $ es
+
+Elasticshell will automatically try to connect to a local
+Elasticsearch database running on the default port.  You can modify
+this with the startup options.  Type +help+ at any time to get some
+contextual help from Elasticshell.
+
+Within Elasticshell, there are three variables whose values affect
+behavior.  These variables are reflected in the default prompt, for
+example:
+
+  GET /my_index/my_type >
+
+This prompt tells us three things:
+
+1) The default HTTP verb we're using for requests is +GET+.
+2) The default API "scope" we're in is <tt>/my_index/my_type</tt>.
+3) Elasticshell will print raw responses from the database -- this is
+the <tt>></tt> at the end of the prompt.  If we were in pretty-print
+mode, this would become a <tt>$</tt>
+
+=== Changing Scope
+
+Use the +cd+ built-in to move between scopes:
+
+  GET /my_index/my_type > cd /other_index/other_type
+  GET /other_index/other_type > cd ..
+  GET /other_index > cd
+  GET /
+
+Tab-complete within a scope after typing +cd+ to see what other scopes
+live under this one.
+
+=== Running Commands
+
+There are a lot of different ways of telling Elasticsearch what you
+want done.
+
+==== Named commands
+
+Each scope has different commands, as per the {Elasticsearch API
+documentation}[http://www.elasticsearch.org/guide/reference/api/].
+Within a scope, tab-complete on the first word to see a list of
+possible commands.  Hit enter after a command to see output from
+Elasticsearch.
+
+Here's a command to get the status for the cluster:
+
+  GET / > _status
+
+Here's a command to get the health of the cluster:
+
+  GET / > cd _cluster
+  GET /_cluster > health
+
+==== Commands with query strings  
+
+Commands will also accept a query string, as in this example of a
+search through +my_index+:
+
+  GET /my_index > _search?q=foo+AND+bar
+  {...}
+
+==== Commands with query bodies  
+
+In this example the query <tt>foo AND bar</tt> was passed via the
+query string part of a URL.  Passing a more complex query requires we
+put the query in the body of the request.  If you're willing to forego
+using spaces you can do this right on the same line:
+
+  GET /my_index > _search {"query":{"query_string":{"query":"foo"}}}
+  {...}
+
+But if you want more expressiveness you can either name a file (with
+tab-completion) that contains the body you want:
+
+  # in /tmp/query.json
+  {
+    "query": {
+      "query_string: {
+        "query": "foo AND bar"
+      }
+    }
+  }
+	  
+followed by
+
+  GET /my_index > _search /tmp/query.json
+  {...}
+
+Or you can do +cat+-style, pasting the query into the shell, by using
+the <tt>-</tt> character:
+
+  GET /my_index > _search -
+  {
+    "query": {
+      "query_string: {
+        "query": "foo AND bar"
+      }
+    }
+  }  
+  {...}
+
+Don't forget to use <tt>Ctrl-D</tt> to send an +EOF+ to flush the
+input of the query.
+
+==== Arbitrary commands
+
+You can send an arbitrary HTTP request to Elasticsearch, just spell
+the command with a leading slash:
+
+  GET / > /my_index/_search?q=foo+AND+bar
+
+You can specify a different HTTP verb by prefixing it before the path
+you send the request to.  Here's how to create an index using a +PUT+
+request:
+
+  GET / > PUT /my_new_index
+
+You can also change Elasticsearch's default HTTP verb by giving it
+one.  Here's the same thing in two steps:
+
+  GET / > PUT
+  PUT / > /my_new_index
