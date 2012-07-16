@@ -171,7 +171,8 @@ EOF
       when path
         b = path
       else
-        b = (command.split(' ', 2).last || '')
+        # b = (command.split(' ', 2).last || '')
+        b = ''
       end
       
       [c, o, b]
