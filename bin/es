@@ -3,4 +3,4 @@
 $: << File.expand_path('../../lib', __FILE__) unless $:.include?($: << File.expand_path('../../lib', __FILE__))
 require 'elasticshell'
 
-Elasticshell.start if __FILE__ == $0
+Elasticshell.start
