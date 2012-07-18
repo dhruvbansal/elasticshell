@@ -1,23 +1,68 @@
 require 'readline'
 require 'uri'
 
+require 'elasticshell/client'
 require 'elasticshell/command'
 require 'elasticshell/scopes'
-require 'elasticshell/client'
+require 'elasticshell/utils/has_verb'
 
 module Elasticshell
 
   class Shell
 
-    VERBS = %w[GET POST PUT DELETE]
+    Settings.define(:passive_http_verb_format,
+                    :description => "Format string for the passive HTTP verb GET.  The string `%v' will be replaced by the verb.",
+                    :default     => "\e[34m%v",
+                    :internal    => true)
     
-    attr_accessor :client, :input, :command, :state, :only
+    Settings.define(:active_http_verb_format,
+                    :description => "Format string for the active HTTP verbs PUT, POST, and DELETE.  The string `%v' will be replaced by the verb.",
+                    :default     => "\e[31m%v",
+                    :internal    => true)
+    
+    Settings.define(:existing_scope_format,
+                    :description => "Format string for an existing scope.  The string `%s' will be replaced by the scope name.",
+                    :default     => "\e[32m%s",
+                    :internal    => true)
+    
+    Settings.define(:missing_scope_format,
+                    :description => "Format string for scope which doesn't exist.  The string `%s' will be replaced by the scope name.",
+                    :default     => "\e[33m%s",
+                    :internal    => true)
+    
+    Settings.define(:prompt_format,
+                    :description => "Format string for the prompt.  The strings `%v' and `%s' will be replaced by the (already-formatted) HTTP verb and current scope name.",
+                    :default     => "\e[1m%v %s$ \e[0m",
+                    :internal    => true)
+    
+    Settings.define(:pretty_prompt_format,
+                    :description => "Format string for the prompt when in pretty-mode.  The strings `%v' and `%s' will be replaced by the (already-formatted) HTTP verb and current scope name.",
+                    :default     => "\e[1m%v %s$$ \e[0m",
+                    :internal    => true)
+    
+    Settings.define(:scope_long_format,
+                    :description => "Format string for displaying a scope in a long (`ll') listing.  The string `%s' will be replaced by the scope name.",
+                    :default     => "d	\e[32m%s\e[0m",
+                    :internal    => true)
+    
+    Settings.define(:request_long_format,
+                    :description => "Format string for displaying a request in a long (`ll') listing.  The string `%r' will be replaced by the request name.",
+                    :default     => "-	%r",
+                    :internal    => true)
+    
+    Settings.define(:scope_format,
+                    :description => "Format string for displaying a scope in a listing.  The string `%s' will be replaced by the scope name.",
+                    :default     => "\e[32m%s\e[0m",
+                    :internal    => true)
+    
+    Settings.define(:request_format,
+                    :description => "Format string for displaying a request in a listing.  The string `%r' will be replaced by the request name.",
+                    :default     => "%r",
+                    :internal    => true)
+    
+    include Elasticshell::HasVerb
 
-    attr_reader :verb
-    def verb= v
-      raise ArgumentError.new("'#{v}' is not a valid HTTP verb.  Must be one of: #{VERBS.join(', ')}") unless VERBS.include?(v.upcase)
-      @verb = v.upcase
-    end
+    attr_accessor :client, :state, :only, :input
 
     attr_reader :scope
     def scope= scope
@@ -30,30 +75,38 @@ module Elasticshell
     end
 
     def initialize options={}
+      @interactive = false
       self.state  = :init
       self.client = Client.new(options)
+      @initial_servers = (options[:servers] || [])
       self.verb   = (options[:verb] || 'GET')
-      self.scope  = Scopes.from_path((options[:scope] || '/'), :client => self.client)
+      self.scope  = scope_from_path(options[:scope] || '/')
       self.only   = options[:only]
       pretty! if options[:pretty]
     end
 
+    def scope_from_path path
+      Scopes.from_path(path, :client => self.client)
+    end
+
+    def format name, codes, values
+      cs = [codes].flatten
+      vs = [values].flatten
+      raise ArgumentError.new("Must provide the same number of format codes as value strings.") unless cs.length == vs.length
+      Settings[name].dup.tap do |s|
+        cs.each_with_index do |c, index|
+          v = vs[index]
+          s.gsub!(c, v)
+        end
+      end
+    end
+
     def prompt
-      "\e[1m#{prompt_verb_color}#{verb} #{prompt_scope_color}#{scope.path} #{prompt_prettiness_indicator} \e[0m"
+      verb_string  = format((verb =~ /^(?:G|H)/i ? :passive_http_verb_format : :active_http_verb_format), "%v", verb)
+      scope_string = format((scope.exists? ? :existing_scope_format : :missing_scope_format), "%s", scope.path)
+      format((pretty? ? :pretty_prompt_format : :prompt_format), ["%s", "%v"], [scope_string, verb_string])
     end
-
-    def prompt_scope_color
-      scope.exists? ? "\e[32m" : "\e[33m"
-    end
-
-    def prompt_verb_color
-      verb == "GET" ? "\e[34m" : "\e[31m"
-    end
-
-    def prompt_prettiness_indicator
-      pretty? ? '$' : '>'
-    end
-  
+    
     def pretty?
       @pretty
     end
@@ -66,6 +119,10 @@ module Elasticshell
       @pretty = false
     end
 
+    def interactive?
+      @interactive
+    end
+
     def setup
       trap("INT") do
         int
@@ -73,10 +130,11 @@ module Elasticshell
 
       Readline.completer_word_break_characters = " \t\n\"\\'`$><=|&{("
       
-      puts <<EOF
+      print <<EOF
 Elasticshell v. #{Elasticshell.version}
 Type "help" for contextual help.
 EOF
+      @interactive = true
     end
 
     def run
@@ -86,23 +144,34 @@ EOF
 
     def loop
       self.state = :read
+      eval_line("connect #{@initial_servers.join(',')}")
       while line = Readline.readline(prompt, true)
         eval_line(line)
       end
+      die
     end
 
     def eval_line line
       begin
-        self.input   = line.strip
-        self.command = Command.new(self, input)
         self.state = :eval
-        self.command.evaluate!
+        self.input = line.strip
+        command.evaluate!
       rescue ::Elasticshell::Error => e
         $stderr.puts e.message
       end
       self.state = :read
     end
 
+    def command
+      klass = Commands::PRIORITY.detect { |command_class| command_class.matches?(input) }
+      
+      # We should never hit the following ArgumentError as there
+      # exists a catch-all command: Unknown
+      raise ArgumentError.new("Could not parse command: '#{input}'") unless klass
+      
+      klass.new(self, input)
+    end
+    
     def print obj, ignore_only=false
       if self.only && !ignore_only
         if self.only == true
@@ -140,51 +209,9 @@ EOF
       end
     end
 
-    def clear_line
-      while Readline.point > 0
-        $stdin.write("\b \b")
-      end
-    end
-
     def die
-      puts "C-d"
-      print("C-d...quitting")
-      exit()
-    end
-
-    def command_and_query_and_body command
-      parts = command.split
-      
-      c_and_q = parts[0]
-      c, q = c_and_q.split('?')
-      o = {}
-      URI.decode_www_form(q || '').each do |k, v|
-        o[k] = v
-      end
-
-      path = parts[1]
-      case
-      when path && File.exist?(path) && File.readable?(path)
-        b = File.read(path)
-      when path && path == '-'
-        b = $stdin.gets(nil)
-      when path
-        b = path
-      else
-        # b = (command.split(' ', 2).last || '')
-        b = ''
-      end
-      
-      [c, o, b]
-    end
-    
-    def request verb, params={}
-      c, o, b = command_and_query_and_body(input)
-      body    = (params.delete(:body) || b || '')
-      print(client.request(verb, params.merge(:op => c), o, b))
+      raise ShellError.new("C-d...quitting")
     end
 
   end
-  
 end
-

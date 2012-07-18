@@ -1,4 +1,5 @@
 require 'elasticshell/scopes'
+require 'elasticshell/utils/has_name'
 
 module Elasticshell
 
@@ -6,7 +7,7 @@ module Elasticshell
 
     class Mapping < Scope
 
-      VALID_MAPPING_NAME_RE = %r![^/]!
+      include HasName
 
       attr_accessor :index
 
@@ -16,38 +17,20 @@ module Elasticshell
         super("/#{index.name}/#{self.name}", options)
       end
 
-      attr_reader :name
-      def name= name
-        raise ArgumentError.new("Invalid mapping name: '#{name}'") unless name =~ VALID_MAPPING_NAME_RE
-        @name = name
-      end
-
-      def commands
-        {
-          "_search"  => "Search records within this mapping.",
-          "_mapping" => "Retrieve the mapping settings for this mapping.",
+      def self.requests
+        @requests ||= {
+          "GET" => {
+            "_search"  => "Search records within this mapping.",
+            "_mapping" => "Retrieve the mapping settings for this mapping.",
+          }
         }
       end
 
       def exists?
         index.refresh
-        index.contents.include?(name)
+        index.scopes.include?(name)
       end
 
-      def command? command
-        true
-      end
-
-      def execute command, shell
-        case
-        when command?(command)
-          shell.request(:get, :index => index.name, :type => name)
-        else
-          record = shell.request(:get, :index => index.name, :type => name)
-          shell.print(record) if record
-        end
-      end
-      
     end
   end
 end

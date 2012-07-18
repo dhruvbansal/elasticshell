@@ -10,18 +10,21 @@ module Elasticshell
         super("/", options)
       end
 
-      def commands
-        {
-          '_status'  => "Retreive the status of all indices in the cluster."
+      def self.requests
+        @requests ||= {
+          "GET" => {
+            '_status'  => "Retreive the status of all indices in the cluster."
+          }
         }
       end
 
-      def initial_contents
+      def initial_scopes
         ['_cluster', '_nodes']
       end
 
-      def fetch_contents
-        self.contents += client.safely(:get, {:index => '_status'}, :return => {"indices" => {}})["indices"].keys
+      def fetch_scopes
+        self.stat  
+        self.scopes += client.safely(:get, {:index => '_status'}, :return => {"indices" => {}}, :log => false)["indices"].keys
       end
 
       def index name, options={}
@@ -30,21 +33,6 @@ module Elasticshell
 
       def exists?
         true
-      end
-
-      def execute command, shell
-        case
-        when command =~ /^_cluster/
-          shell.scope = Scopes.cluster(:client => client)
-        when command =~ /^_nodes/
-          shell.scope = Scopes.nodes(:client => client)
-        when command?(command)
-          shell.request(:get)
-        when index_names.include?(command)
-          shell.scope = index(command)
-        else
-          super(command, shell)
-        end
       end
       
     end

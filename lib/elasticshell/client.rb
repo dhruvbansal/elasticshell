@@ -1,6 +1,4 @@
 require 'rubberband'
-require 'elasticshell/error'
-require 'elasticshell/log'
 
 module Elasticshell
 
@@ -9,13 +7,29 @@ module Elasticshell
     DEFAULT_SERVERS = ['http://localhost:9200']
 
     def initialize options={}
-      @client ||= ::ElasticSearch::Client.new(options[:servers] || DEFAULT_SERVERS)
+      @options = options
+    end
+
+    def connect options={}
+      servers = (options.merge(@options)[:servers] || DEFAULT_SERVERS)
+      begin
+        @client = ElasticSearch::Client.new(servers)
+      rescue ElasticSearch::ConnectionFailed => e
+        raise ClientError.new("Could not connect to Elasticsearch server(s) at #{servers.join(',')}")
+      end
+    end
+
+    def connected?
+      @client
     end
 
     def request verb, params={}, options={}, body=''
       safe        = options.delete(:safely)
       safe_return = options.delete(:return)
-      # log_request(verb, params, options)
+      
+      # Log by default
+      log_request(verb, params, options) unless options.delete(:log) == false
+      
       begin
         @client.execute(:standard_request, verb, params, options, body)
       rescue ElasticSearch::RequestError, ArgumentError => e
@@ -32,8 +46,8 @@ module Elasticshell
       # necessary?
       uri   = @client.instance_variable_get('@connection').send(:generate_uri, params)
       query = @client.instance_variable_get('@connection').send(:generate_query_string, options)
-      path  = [uri, query].reject { |s| s.nil? || s.strip.empty? }.join("?")
-      Elasticshell.log("#{verb.to_s.upcase} #{path}")
+      path  = [uri, query].reject { |s| s.nil? || s.strip.empty? }.join("?").gsub(Regexp.new("^/+"), "/")
+      Elasticshell.log("#{verb.to_s.upcase} #{path}".strip)
     end
 
     def safely verb, params={}, options={}, body=''

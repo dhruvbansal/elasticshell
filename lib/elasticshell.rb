@@ -2,9 +2,11 @@ require 'rubygems'
 require 'json'
 require 'configliere'
 
+require 'elasticshell/utils/error'
+require 'elasticshell/utils/log'
+require 'elasticshell/client'
 require 'elasticshell/shell'
 require 'elasticshell/scopes'
-require 'elasticshell/client'
 
 Settings.use(:commandline)
 
@@ -52,7 +54,12 @@ module Elasticshell
       if Settings.rest.length > 0
         es.scope = Scopes.from_path(Settings.rest.first, :client => es.client)
       end
-      es.run
+      begin
+        es.run
+      rescue Elasticshell::Error => e
+        puts e.message
+        exit(2)
+      end
     end
   end
   

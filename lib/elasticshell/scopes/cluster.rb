@@ -10,25 +10,19 @@ module Elasticshell
         super("/_cluster", options)
       end
 
-      def commands
-        {
-          'health'  => "Retreive the health of the cluster.",
-          'state'   => "Retreive the state of the cluster.",
-          'settings'=> "Retreive the settings for the cluster.",
+      def self.requests
+        @requests = {
+          "GET" => 
+          {
+            'health'  => "Retreive the health of the cluster.",
+            'state'   => "Retreive the state of the cluster.",
+            'settings'=> "Retreive the settings for the cluster.",
+          }
         }
       end
 
       def exists?
         true
-      end
-
-      def execute command, shell
-        case
-        when command?(command)
-          shell.request(:get, :index => '_cluster')
-        else
-          super(command, shell)
-        end
       end
       
     end

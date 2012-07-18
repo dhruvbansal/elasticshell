@@ -1,5 +1,6 @@
-require 'elasticshell/error'
 require 'uri'
+
+require 'elasticshell/utils/has_verb'
 
 module Elasticshell
   
@@ -52,12 +53,19 @@ module Elasticshell
 
   class Scope
 
-    attr_accessor :path, :client, :last_refresh_at, :contents
+    include Elasticshell::HasVerb
 
+    attr_accessor :path, :client, :last_refresh_at, :scopes
+
+    def self.requests
+      @requests ||= {}
+    end
+    
     def initialize path, options
-      self.path     = path
-      self.client   = options[:client]
-      self.contents = initial_contents
+      self.verb   = (options.delete(:verb) || 'GET')
+      self.path   = path
+      self.client = options[:client]
+      self.scopes = initial_scopes
     end
 
     def to_s
@@ -66,15 +74,18 @@ module Elasticshell
 
     def completion_proc
       Proc.new do |prefix|
-        refresh
+        refresh if client.connected?
         case
         when Readline.line_buffer =~ /^\s*cd\s+\S*$/
-          contents.find_all do |content|
-            content[0...prefix.length] == prefix
+          # FIXME allow completion when providing a nested prefix like
+          # 'foo/ba' from within scope '/' by completing with respect
+          # to scope 'foo' instead of only scope '/' as done here.
+          scopes.find_all do |scope|
+            scope[0...prefix.length] == prefix
           end
         when Readline.line_buffer =~ /^\s*\S*$/
-          command_names.find_all do |command_name|
-            command_name[0...prefix.length] == prefix
+          request_names.find_all do |request_name|
+            request_name[0...prefix.length] == prefix
           end
         else
           Dir[prefix + '*']
@@ -82,35 +93,34 @@ module Elasticshell
       end
     end
 
-    def command_names
-      refresh
-      commands.keys.sort
+    def requests
+      self.class.requests[verb] || {}
     end
 
-    def commands
-      {}
+    def request_names
+      requests.keys
     end
-
+    
     def refresh
       refresh! unless refreshed?
     end
 
     def refresh!
       reset!
-      fetch_contents
+      fetch_scopes
       self.last_refresh_at = Time.now
       true
     end
 
-    def fetch_contents
+    def fetch_scopes
     end
 
-    def initial_contents
+    def initial_scopes
       []
     end
 
     def reset!
-      self.contents = initial_contents
+      self.scopes = initial_scopes
       true
     end
 
@@ -122,26 +132,12 @@ module Elasticshell
       false
     end
 
-    def command? command
-      command_names.any? do |command_name|
-        command[0...command_name.length] == command_name
-      end
-    end
-
-    def execute command, shell
-      if command_names.include?(command)
-        raise NotImplementedError.new("Have not yet implemented '#{command}' for scope '#{path}'.")
-      else
-        raise ArgumentError.new("No such command '#{command}' in scope '#{path}'.")
-      end
-    end
-
     def help
       [].tap do |msg|
-        msg << "Commands specific to the scope '#{path}':"
+        msg << "Requests specific to the scope '#{path}':"
         msg << ''
-        commands.each_pair do |command_name, description|
-          msg << '  ' + command_name
+        requests.each_pair do |request_name, description|
+          msg << '  ' + request_name
           msg << ('    ' + description)
           msg << ''
         end
