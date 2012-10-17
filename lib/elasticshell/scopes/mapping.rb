@@ -1,6 +1,3 @@
-require 'elasticshell/scopes'
-require 'elasticshell/utils/has_name'
-
 module Elasticshell
 
   module Scopes

@@ -1,11 +1,6 @@
 require 'readline'
 require 'uri'
 
-require 'elasticshell/client'
-require 'elasticshell/command'
-require 'elasticshell/scopes'
-require 'elasticshell/utils/has_verb'
-
 module Elasticshell
 
   class Shell
@@ -42,12 +37,17 @@ module Elasticshell
     
     Settings.define(:scope_long_format,
                     :description => "Format string for displaying a scope in a long (`ll') listing.  The string `%s' will be replaced by the scope name.",
-                    :default     => "d	\e[32m%s\e[0m",
+                    :default     => "s                          \e[32m%s\e[0m",
+                    :internal    => true)
+
+    Settings.define(:index_long_format,
+                    :description => "Format string for displaying an index in a long (`ll') listing.  The string `%n' will be replaced by the index name, `%T' with the total number of shards, `%S' with the number of successful shards, `%F' with the number of failed shards, `%s' with the size in bytes, `%h' with the human-readable size",
+                    :default     => "d  %S/%F  %h  \e[32m%n\e[0m",
                     :internal    => true)
     
     Settings.define(:request_long_format,
                     :description => "Format string for displaying a request in a long (`ll') listing.  The string `%r' will be replaced by the request name.",
-                    :default     => "-	%r",
+                    :default     => "-                          %r",
                     :internal    => true)
     
     Settings.define(:scope_format,
@@ -62,7 +62,7 @@ module Elasticshell
     
     include Elasticshell::HasVerb
 
-    attr_accessor :client, :state, :only, :input
+    attr_accessor :client, :state, :only, :input, :cache, :output, :error, :line, :input_stream
 
     attr_reader :scope
     def scope= scope
@@ -70,23 +70,41 @@ module Elasticshell
       proc = scope.completion_proc
       Readline.completion_proc = Proc.new do |prefix|
         self.state = :completion
-        proc.call(prefix)
+        proc.call(self, prefix)
       end
+    end
+
+    def path
+      scope.path
+    end
+
+    def connected?
+      client.connected?
     end
 
     def initialize options={}
       @interactive = false
       self.state  = :init
       self.client = Client.new(options)
+      self.cache  = {}
       @initial_servers = (options[:servers] || [])
       self.verb   = (options[:verb] || 'GET')
       self.scope  = scope_from_path(options[:scope] || '/')
       self.only   = options[:only]
+      self.input_stream  = (options[:input]  || $stdin)
+      self.output = (options[:output] || $stdout)
+      self.error  = (options[:error]  || $stderr)
+      self.line   = 0
+      @log_requests = (options[:log_requests] == false ? false : true)
       pretty! if options[:pretty]
     end
 
     def scope_from_path path
-      Scopes.from_path(path, :client => self.client)
+      if cache[path]
+        cache[path]
+      else
+        cache[path] = Scopes.from_path(path, :client => self.client)
+      end
     end
 
     def format name, codes, values
@@ -135,16 +153,22 @@ Elasticshell v. #{Elasticshell.version}
 Type "help" for contextual help.
 EOF
       @interactive = true
+
+      self.line = 1
     end
 
     def run
       setup
+      connect
       loop
+    end
+
+    def connect
+      eval_line("connect #{@initial_servers.join(',')}")
     end
 
     def loop
       self.state = :read
-      eval_line("connect #{@initial_servers.join(',')}")
       while line = Readline.readline(prompt, true)
         eval_line(line)
       end
@@ -157,47 +181,54 @@ EOF
         self.input = line.strip
         command.evaluate!
       rescue ::Elasticshell::Error => e
-        $stderr.puts e.message
+        error.puts e.message
       end
       self.state = :read
+      self.line += 1
+      self
     end
 
     def command
-      klass = Commands::PRIORITY.detect { |command_class| command_class.matches?(input) }
+      matching_command_class_name = Commands::PRIORITY.detect do |command_class_name|
+        Commands.const_get(command_class_name).matches?(input)
+      end
       
       # We should never hit the following ArgumentError as there
       # exists a catch-all command: Unknown
-      raise ArgumentError.new("Could not parse command: '#{input}'") unless klass
+      raise ArgumentError.new("Could not parse command: '#{input}'") unless matching_command_class_name
       
-      klass.new(self, input)
+      Commands.const_get(matching_command_class_name).new(self, input)
     end
     
     def print obj, ignore_only=false
-      if self.only && !ignore_only
-        if self.only == true
-          print(obj, true)
-        else
-          only_parts = self.only.to_s.split('.')
-          obj_to_print = obj
-          while obj_to_print && only_parts.size > 0
-            this_only = only_parts.shift
-            obj_to_print = (obj_to_print || {})[this_only]
-          end
-          print(obj_to_print, true)
-        end
+      self.output.puts(format_output(obj, ignore_only))
+    end
+
+    def format_output obj, ignore_only=false
+      case
+      when self.only == true && !ignore_only
+        format_output(obj, true)
+      when self.only && !ignore_only
+        format_only_part_of(obj)
+      when obj.nil?
+        nil
+      when String, Fixnum
+        obj
+      when pretty?
+        JSON.pretty_generate(obj)
       else
-        case obj
-        when nil
-        when String, Fixnum
-          puts obj
-        else
-          if pretty?
-            puts JSON.pretty_generate(obj)
-          else
-            puts obj.to_json
-          end
-        end
+        obj.to_json
       end
+    end
+
+    def format_only_part_of obj
+      only_parts = self.only.to_s.split('.')
+      obj_to_print = obj
+      while obj_to_print && only_parts.size > 0
+        this_only = only_parts.shift
+        obj_to_print = (obj_to_print || {})[this_only]
+      end
+      format_output(obj_to_print, true)
     end
 
     def int
@@ -211,6 +242,10 @@ EOF
 
     def die
       raise ShellError.new("C-d...quitting")
+    end
+
+    def log_requests?
+      @log_requests
     end
 
   end

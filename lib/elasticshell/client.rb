@@ -4,14 +4,12 @@ module Elasticshell
 
   class Client
 
-    DEFAULT_SERVERS = ['http://localhost:9200']
-
     def initialize options={}
       @options = options
     end
 
     def connect options={}
-      servers = (options.merge(@options)[:servers] || DEFAULT_SERVERS)
+      servers = (options.merge(@options)[:servers] || Settings[:servers].to_s.split(","))
       begin
         @client = ElasticSearch::Client.new(servers)
       rescue ElasticSearch::ConnectionFailed => e
@@ -24,6 +22,7 @@ module Elasticshell
     end
 
     def request verb, params={}, options={}, body=''
+      raise ClientError.new("Not connected to any Elasticsearch servers.") unless connected?
       safe        = options.delete(:safely)
       safe_return = options.delete(:return)
       
@@ -31,7 +30,7 @@ module Elasticshell
       log_request(verb, params, options) unless options.delete(:log) == false
       
       begin
-        @client.execute(:standard_request, verb, params, options, body)
+        perform_request(verb, params, options, body)
       rescue ElasticSearch::RequestError, ArgumentError => e
         if safe
           safe_return
@@ -41,13 +40,21 @@ module Elasticshell
       end
     end
 
+    def perform_request verb, params, options, body
+      @client.execute(:standard_request, verb.downcase.to_sym, params, options, body)
+    end
+
     def log_request verb, params, options={}
-      # FIXME digging way too deep into rubberband here...is it really
-      # necessary?
-      uri   = @client.instance_variable_get('@connection').send(:generate_uri, params)
-      query = @client.instance_variable_get('@connection').send(:generate_query_string, options)
-      path  = [uri, query].reject { |s| s.nil? || s.strip.empty? }.join("?").gsub(Regexp.new("^/+"), "/")
-      Elasticshell.log("#{verb.to_s.upcase} #{path}".strip)
+      begin
+        # FIXME digging way too deep into rubberband here...is it really
+        # necessary?
+        uri   = @client.instance_variable_get('@connection').send(:generate_uri, params)
+        query = @client.instance_variable_get('@connection').send(:generate_query_string, options)
+        path  = [uri, query].reject { |s| s.nil? || s.strip.empty? }.join("?").gsub(Regexp.new("^/+"), "/")
+        Elasticshell.log("#{verb.to_s.upcase} #{path}".strip)
+      rescue
+        Elasticshell.log("#{verb.to_s.upcase} #{params.inspect} #{options.inspect}".strip)
+      end
     end
 
     def safely verb, params={}, options={}, body=''

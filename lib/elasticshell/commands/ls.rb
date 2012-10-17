@@ -16,24 +16,44 @@ module Elasticshell
           self.scope = shell.scope
         end
         self.scope.refresh!
-        input =~ /^ll/ ? ll! : ls!
+        input =~ /^l(?:l|a)/ ? ll! : ls!
+      end
+
+      def sort array
+        with_underscores    = array.find_all { |element| element =~ /^_/    }
+        without_underscores = array.find_all { |element| element =~ /^[^_]/ }
+        without_underscores.sort + with_underscores.sort
       end
 
       def ll!
-        scope.scopes.sort.each do |scope|
-          shell.print shell.format(:scope_long_format, "%s", scope)
+        sort(scope.scopes).each do |scope_name|
+          case
+          when scope.path == '/' && scope.indices.include?(scope_name)
+            index = shell.scope_from_path("/#{scope_name}")
+            total_shards = index.status["_shards"]["total"]
+            succ_shards  = index.status["_shards"]["successful"]
+            fail_shards  = index.status["_shards"]["failed"]
+            size         = index.status["indices"][scope_name]["index"]["size_in_bytes"]
+            human_size   = index.status["indices"][scope_name]["index"]["size"]
+            num_docs     = index.status["indices"][scope_name]["docs"]["num_docs"]
+            shell.print("i %10s %6s %6s \e[32m%s\e[0m" % ["#{total_shards}/#{succ_shards}/#{fail_shards}", num_docs, human_size, scope_name])
+          when scope.class == Scopes::Index && scope.mappings.include?(scope_name)
+            shell.print("m                          \e[32m%s\e[0m" % [scope_name])
+          else
+            shell.print shell.format(:scope_long_format, "%s", scope_name)
+          end
         end
-        scope.request_names.sort.each do |request|
+        sort(scope.request_names).each do |request|
           shell.print shell.format(:request_long_format, "%r", request)
         end
       end
 
       def ls!
         output = []
-        scope.scopes.sort.map do |scope|
+        sort(scope.scopes).map do |scope|
           output << shell.format(:scope_format, "%s", scope)
         end
-        scope.request_names.sort.map do |request|
+        sort(scope.request_names).map do |request|
           output << shell.format(:request_format, "%r", request)
         end
         shell.print output.join(' ')

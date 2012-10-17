@@ -1,5 +1,3 @@
-require 'elasticshell/scopes'
-
 module Elasticshell
 
   module Scopes
@@ -13,7 +11,7 @@ module Elasticshell
       def self.requests
         @requests ||= {
           "GET" => {
-            'info'  => "Retreive info about the cluster's ndoes.",
+            'info'  => "Retreive info about the cluster's nodes.",
             'stats' => "Retreive stats for the cluter's nodes.",
           }
         }

@@ -1,6 +1,3 @@
-require 'elasticshell/scopes'
-require 'elasticshell/utils/has_name'
-
 module Elasticshell
 
   module Scopes
@@ -9,8 +6,11 @@ module Elasticshell
 
       include HasName
 
+      attr_reader :mappings
+
       def initialize name, options={}
         self.name = name
+        @mappings = []
         super("/#{self.name}", options)
       end
 
@@ -29,6 +29,16 @@ module Elasticshell
         @global ||= Scopes.global(:client => client)
       end
 
+      def status
+        @status ||= client.safely(:get, {:index => name, :op => '_status'}, :return => {"indices" => {name => {}}}, :log => false)
+      end
+      
+      def reset!
+        @status   = nil
+        @mappings = []
+        super()
+      end
+      
       def exists?
         return false unless client.connected?
         global.refresh
@@ -44,7 +54,8 @@ module Elasticshell
       end
 
       def fetch_scopes
-        self.scopes += (client.safely(:get, {:index => name, :op => '_mapping'}, :return => { name => {}}, :log => false)[name] || {}).keys
+        @mappings = (client.safely(:get, {:index => name, :op => '_mapping'}, :return => { name => {}}, :log => false)[name] || {}).keys
+        self.scopes += @mappings
       end
 
       def mapping mapping_name, options={}

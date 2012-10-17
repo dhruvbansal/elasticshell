@@ -14,7 +14,7 @@ module Elasticshell
     end
 
     def be_connected!
-      raise ClientError.new("Not connected to any Elasticsearch servers.") unless shell.client.connected?
+      raise ClientError.new("Not connected to any Elasticsearch servers.") unless shell.connected?
     end
 
     def evaluate!
@@ -22,13 +22,14 @@ module Elasticshell
     end
   end
 
-  Dir[File.join(File.dirname(__FILE__), '**/*.rb')].each { |path| require path }
-
   module Commands
-    PRIORITY = [Cd, Pwd, Connect, Help, Ls, Pretty, SetVerb, Blank, Request, Unknown]
+    PRIORITY = [].tap do |priority|
+      %w[cd pwd df connect help ls pretty set_verb blank request unknown].each do |command_name|
+        klass_name = command_name.split("_").map(&:capitalize).join("")
+        autoload klass_name.to_sym, "elasticshell/commands/#{command_name}"
+        priority << klass_name
+      end
+    end
   end
 
 end
-
-
-

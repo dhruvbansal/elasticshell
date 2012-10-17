@@ -1,5 +1,3 @@
-require 'elasticshell/scopes'
-
 module Elasticshell
 
   module Scopes

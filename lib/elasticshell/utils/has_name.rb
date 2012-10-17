@@ -1,12 +1,12 @@
 module Elasticshell
   module HasName
 
-    NAME_RE = %r![^/]!
+    FORBIDDEN_NAME_CHARS = %r![/\s]!
 
     attr_reader :name
 
     def name= new_name
-      raise ArgumentError.new("Invalid index name: '#{new_name}'") unless new_name =~ NAME_RE
+      raise ArgumentError.new("Invalid index name: '#{new_name}'") if new_name =~ FORBIDDEN_NAME_CHARS
       @name = new_name
     end
     

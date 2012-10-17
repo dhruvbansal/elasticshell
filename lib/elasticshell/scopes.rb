@@ -1,7 +1,5 @@
 require 'uri'
 
-require 'elasticshell/utils/has_verb'
-
 module Elasticshell
   
   module Scopes
@@ -62,7 +60,7 @@ module Elasticshell
     end
     
     def initialize path, options
-      self.verb   = (options.delete(:verb) || 'GET')
+      self.verb   = options.delete(:verb)
       self.path   = path
       self.client = options[:client]
       self.scopes = initial_scopes
@@ -73,15 +71,26 @@ module Elasticshell
     end
 
     def completion_proc
-      Proc.new do |prefix|
+      Proc.new do |shell, prefix|
         refresh if client.connected?
         case
         when Readline.line_buffer =~ /^\s*cd\s+\S*$/
-          # FIXME allow completion when providing a nested prefix like
-          # 'foo/ba' from within scope '/' by completing with respect
-          # to scope 'foo' instead of only scope '/' as done here.
-          scopes.find_all do |scope|
-            scope[0...prefix.length] == prefix
+          completing_scope_path = prefix.split('/')[0..-2].join('/')
+          if completing_scope_path.empty?
+            completing_scope = self
+          else
+            completing_scope = shell.scope_from_path(File.expand_path(completing_scope_path, shell.scope.path))
+          end
+          completing_scope.refresh if client.connected?
+
+          prefix_within_completing_scope = (prefix.split('/').last || '')
+
+          # p [prefix, completing_scope.path, prefix_within_completing_scope]
+          
+          completing_scope.scopes.find_all do |scope|
+            scope[0...prefix_within_completing_scope.length] == prefix_within_completing_scope
+          end.map do |scope|
+            File.join(completing_scope.path, scope).gsub(%r!^/!, '')
           end
         when Readline.line_buffer =~ /^\s*\S*$/
           request_names.find_all do |request_name|
@@ -125,23 +134,11 @@ module Elasticshell
     end
 
     def refreshed?
-      self.last_refresh_at
+      ! self.last_refresh_at.nil?
     end
 
     def exists?
       false
-    end
-
-    def help
-      [].tap do |msg|
-        msg << "Requests specific to the scope '#{path}':"
-        msg << ''
-        requests.each_pair do |request_name, description|
-          msg << '  ' + request_name
-          msg << ('    ' + description)
-          msg << ''
-        end
-      end.join("\n")
     end
 
   end

@@ -1,0 +1,45 @@
+---
+
+blog:
+  entries:
+    1:
+      title: Do you suffer from headaches?
+      date: "2012-10-15 Mon 17:37"
+      tags:
+        - stress
+        - headaches
+        - quackery
+      body: |-
+        Then you should really think about investing in a better pillow.
+
+    2:
+      title: My favorite color is lobster.
+      date: "2012-10-16 Tue 17:37"
+      tags:
+        - inane
+        - silly
+      body: |-
+        I don't even think 'lobster' is a color.
+    _noid_:
+      - title: I am not saved.
+        date: "2012-10-17 Wed 17:37"
+        tags:
+          - acid
+          - rest
+        body: |-
+          Wouldn't ACID REST be a cool name for a band?  Or a skin disease?
+          
+  comments:
+    1:
+      post_id: 2
+      date: "2012-10-18 Thr 17:37"
+      author: Some Jackass
+      body: |
+        Have you seen *my* blog?  It's super cool.
+
+    2:
+      post_id: 1
+      date: "2012-10-19 Fri 17:37"
+      author: Your Mom
+      body: |
+        You never calll!

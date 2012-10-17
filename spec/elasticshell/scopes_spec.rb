@@ -18,5 +18,48 @@ describe Scopes do
     Scopes::Mapping.should_receive(:new).with(index, 'baz', kind_of(Hash))
     Scopes.from_path("/foobar/baz")
   end
-  
+
 end
+
+describe Scope do
+
+  before do
+    @klass = Class.new(Scope) do
+      def self.requests
+        {
+          "GET" => {
+            '_a'  => "Request a",
+          },
+          "POST" => {
+            '_b'  => "Request b",
+          }
+        }
+      end
+
+      def initial_scopes
+        ["joe", "mary"]
+      end
+
+      def fetch_scopes
+        self.scopes << "sue"
+      end
+      
+    end
+    @scope = @klass.new("/path/seg", {})
+  end
+
+  it "should restrict available requests to those matching its current verb" do
+    expect(@scope.requests).to include("_a")
+    @scope.verb = "POST"
+    expect(@scope.requests).to include("_b")
+  end
+
+  it "should reset and fetch new scopes when refreshing, but only once" do
+    @scope.should_receive(:reset!)
+    @scope.should_receive(:fetch_scopes)
+    3.times { @scope.refresh }
+  end
+
+end
+
+  

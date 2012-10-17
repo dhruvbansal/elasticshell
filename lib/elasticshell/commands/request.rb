@@ -1,54 +1,66 @@
-require 'elasticshell/utils/recognizes_verb'
-
 module Elasticshell
   module Commands
     class Request < Command
 
-      include RecognizesVerb
       extend  RecognizesVerb
+
+      attr_accessor :response, :request
 
       def self.matches? input
         input =~ Regexp.new("^(#{verb_re}\s+)?.", true)
       end
 
-      def parse input
-        if input =~ Regexp.new("^(#{verb_re})\s+(.+)$", true)
-          verb, request = canonicalize_verb($1), $2
-        else
-          verb, request = shell.verb, input
-        end
-        
-        path_arg, body_arg = request.split(/ /, 2)
-        
-        relative_path, query_string = path_arg.split('?')
-
-        path = File.expand_path(relative_path, shell.scope.path)
-        
-        query_options = {}
-        URI.decode_www_form(query_string || '').each do |k, v|
-          query_options[k] = v
-        end
-
-        case
-        when body_arg.nil?
-          body = ''
-        when body_arg == '-'
-          body = $stdin.gets(nil)
-        when File.exist?(body_arg)
-          body = File.read(body_arg)
-        else
-          body = body_arg
-        end
-
-        { :verb => verb, :path => path, :query_options => query_options, :body => body }
+      def parse!
+        self.request = Parser.new(self).request
       end
 
+      def perform_request!
+        self.response = shell.client.request(request[:verb], {:op => request[:path] }, request[:query_options].merge(:log => shell.log_requests?), request[:body])
+      end
+
+      def pipe?
+        pipe_to_ruby? || pipe_to_irb?
+      end
+      
+      def pipe_to_irb?
+        input =~ /\s\|\s*$/
+      end
+
+      def irb!
+        require 'ripl'
+        Ripl.start(:binding => binding)
+      end
+
+      def pipe_to_ruby?
+        input =~ /\s\|\s*\S+/
+      end
+      
+      def ruby_code
+        return unless pipe?
+        input =~ /\s\|(.*)$/
+        $1.to_s
+      end
+
+      def ruby!
+        eval(ruby_code, binding)
+      end
+      
       def evaluate!
         be_connected!
-        request = parse(input)
-        # p request
-        shell.print(shell.client.request(request[:verb].downcase.to_sym, {:op => request[:path] }, request[:query_options], request[:body]))
+        parse!
+        perform_request!
+        case
+        when pipe_to_irb?
+          irb!
+        when pipe_to_ruby?
+          ruby!
+        else
+          shell.print(response)
+        end
       end
+      
     end
   end
 end
+
+require 'elasticshell/commands/request_parser'

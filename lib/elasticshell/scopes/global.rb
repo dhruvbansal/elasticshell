@@ -1,12 +1,13 @@
-require 'elasticshell/scopes'
-
 module Elasticshell
 
   module Scopes
 
     class Global < Scope
 
+      attr_reader :indices
+
       def initialize options={}
+        @indices = []
         super("/", options)
       end
 
@@ -22,9 +23,19 @@ module Elasticshell
         ['_cluster', '_nodes']
       end
 
+      def status
+        @status ||= client.safely(:get, {:index => '_status'}, :return => {"indices" => {}}, :log => false)
+      end
+
+      def reset!
+        @indices = []
+        @status  = nil
+        super()
+      end
+
       def fetch_scopes
-        self.stat  
-        self.scopes += client.safely(:get, {:index => '_status'}, :return => {"indices" => {}}, :log => false)["indices"].keys
+        @indices = status["indices"].keys
+        self.scopes += @indices
       end
 
       def index name, options={}
