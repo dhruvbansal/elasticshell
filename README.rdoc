@@ -250,6 +250,9 @@ you in a Ruby (Pry) shell with the same binding.
   >> request
   => {:verb=>"GET", :path=>"/_search", :query_options=>{}, :body=>""}
 
+Hit CTRL-D to get out of this new interactive Ruby shell and back to
+Elasticshell.
+
 === Requests from the command line
 
 Instead of running Elasticshell interactively, you can exit after
