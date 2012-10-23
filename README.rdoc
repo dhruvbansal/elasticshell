@@ -244,11 +244,11 @@ that has the +response+ and +request+ variables in scope.  You can be
 even more free by just piping without any Ruby code, which will leave
 you in a Ruby (Pry) shell with the same binding.
 
-GET /my_index$ _search /tmp/query_that_needs_interaction.json | 
->> response
-=> {"took"=>1, "timed_out"=>false, ... }
->> request
-=> {:verb=>"GET", :path=>"/_search", :query_options=>{}, :body=>""}
+  GET /my_index$ _search /tmp/query_that_needs_interaction.json | 
+  >> response
+  => {"took"=>1, "timed_out"=>false, ... }
+  >> request
+  => {:verb=>"GET", :path=>"/_search", :query_options=>{}, :body=>""}
 
 === Requests from the command line
 
