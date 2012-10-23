@@ -69,8 +69,8 @@ describe Scope do
   end
 
   it "should suggest matches against scopes" do
-    expect(@scope.scopes_matching('j')).to eql(['joe/'])
-    expect(@scope.scopes_matching('m')).to eql(['mary/'])
+    expect(@scope.scopes_matching('j')).to eql(['/path/seg/joe/'])
+    expect(@scope.scopes_matching('m')).to eql(['/path/seg/mary/'])
   end
   
   [
