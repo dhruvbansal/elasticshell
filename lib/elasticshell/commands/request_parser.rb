@@ -18,17 +18,21 @@ module Elasticshell
         end
         
         def parse!
-          strip_pipe!
+          strip_redirect!
           split_verb_and_request!
           split_path_and_body!
           interpret_path!
           construct_body!
         end
 
-        def strip_pipe!
-          self.raw = command.shell.input.gsub(/ \|.*$/,'')
+        def strip_redirect!
+          self.raw = command.shell.input.gsub(/ (?:\||>).*$/,'')
         end
 
+        def strip_file_redirect!
+          self.raw = command.shell.input.gsub(/ >.*$/,'')
+        end
+        
         def split_verb_and_request!
           if raw =~ Regexp.new("^(#{verb_re})\s+(.+)$", true)
             self.verb, self.request_string = canonicalize_verb($1), $2

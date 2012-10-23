@@ -75,28 +75,23 @@ module Elasticshell
         refresh if client.connected?
         case
         when Readline.line_buffer =~ /^\s*cd\s+\S*$/
-          completing_scope_path = prefix.split('/')[0..-2].join('/')
-          if completing_scope_path.empty?
-            completing_scope = self
-          else
-            completing_scope = shell.scope_from_path(File.expand_path(completing_scope_path, shell.scope.path))
-          end
+          # User has typed 'cd' so we should be completing scopes only
+          completing_scope_path, prefix_within_completing_scope = completing_scope_path_and_prefix(prefix)
+          completing_scope = shell.scope_from_path(File.expand_path(completing_scope_path, shell.scope.path))
           completing_scope.refresh if client.connected?
-
-          prefix_within_completing_scope = (prefix.split('/').last || '')
-
-          # p [prefix, completing_scope.path, prefix_within_completing_scope]
-          
-          completing_scope.scopes.find_all do |scope|
-            scope[0...prefix_within_completing_scope.length] == prefix_within_completing_scope
-          end.map do |scope|
-            File.join(completing_scope.path, scope).gsub(%r!^/!, '')
-          end
+          completing_scope.scopes_matching(prefix_within_completing_scope)
         when Readline.line_buffer =~ /^\s*\S*$/
-          request_names.find_all do |request_name|
-            request_name[0...prefix.length] == prefix
-          end
+          # User has started but not completed the first word in the
+          # line so it must be a request available in the current
+          # scope.
+          requests_matching(prefix)
+        when Readline.line_buffer =~ />.*$/
+          # User has started to complete the name of a filesystem path
+          # to redirect output to.
+          Dir[prefix + '*']
         else
+          # The user has finished the first word on the line so we try
+          # to match to a filesystem path.
           Dir[prefix + '*']
         end
       end
@@ -108,6 +103,14 @@ module Elasticshell
 
     def request_names
       requests.keys
+    end
+
+    def requests_matching prefix
+      if prefix.empty?
+        request_names.sort
+      else
+        request_names.find_all { |name| name[0...prefix.length] == prefix }.sort
+      end
     end
     
     def refresh
@@ -128,6 +131,41 @@ module Elasticshell
       []
     end
 
+    def completing_scope_path_and_prefix prefix
+      if prefix =~ %r!^/!
+        if prefix =~ %r!/$!
+          index = -1
+          prefix_within_completing_scope = ''
+        else
+          index = -2
+        end
+        completing_scope_path            = prefix.split('/')[0..index].join('/')
+        completing_scope_path            = '/' if completing_scope_path.empty?
+        prefix_within_completing_scope ||= (prefix.split('/').last || '')
+      else
+        if prefix =~ %r!/$!
+          index = -1
+          prefix_within_completing_scope = ''
+        else
+          index = -2
+        end
+        completing_scope_path            = File.join(self.path, prefix.split('/')[0..index].join('/'))
+        completing_scope_path            = self.path if completing_scope_path.empty?
+        prefix_within_completing_scope ||= (prefix.split('/').last || '')
+      end
+      [completing_scope_path, prefix_within_completing_scope]
+    end
+
+    def scopes_matching prefix
+      scopes.find_all do |scope|
+        prefix.empty? ? true : scope[0...prefix.length] == prefix
+      end.map do |scope|
+        scope =~ %r!/$! ? scope : scope + '/'
+      end.sort.map do |scope|
+        File.join(path, scope)
+      end
+    end
+
     def reset!
       self.scopes = initial_scopes
       true
@@ -140,7 +178,7 @@ module Elasticshell
     def exists?
       false
     end
-
+    
   end
   
 end

@@ -26,12 +26,12 @@ How about
 
 == Installation
 
-Installing Elasticshell should be as simple as installing the gem:
+Install the gem:
 
   $ sudo gem install elasticshell
 
-This should install a binary program 'es' that you can run from the
-command line to start Elasticshell.  Try
+which installs a program 'es' that you can run from the command line
+to start Elasticshell.  Try
 
   $ es --help
 
@@ -53,57 +53,115 @@ Within Elasticshell, there are three variables whose values affect
 behavior.  These variables are reflected in the default prompt, for
 example:
 
-  GET /my_index/my_type >
+  GET /my_index/my_type$ 
 
 This prompt tells us three things:
 
 1. The default HTTP verb we're using for requests is +GET+.
 
-2. The default API "scope" we're in is <tt>/my_index/my_type</tt>.
+2. The default API "scope" we're in is <tt>/my_index/my_type</tt>.  If the shell is connected to an Elasticsearch server and the scope exists, it will be colored green.  Otherwise it's yellow.
 
-3. Elasticshell will print raw responses from the database -- this is the <tt>></tt> at the end of the prompt.  If we were in pretty-print mode, this would become a <tt>$</tt>.
+3. Elasticshell will print raw responses from the database -- this is the <tt>$</tt> at the end of the prompt.  If we were in pretty-print mode, this would become a <tt>$$</tt>.
 
-=== Changing Scope
+=== Connecting to the Database
+
+Elasticshell will try to connect to the Elasticsearch hosts passed
+with the <tt>--servers</tt> option during startup.  At any other time,
+you can connect to servers by issuing the +connect+ command:
+
+  GET /$ connect http://192.168.1.10:9200 http://192.168.1.11:9200 http://192.168.1.12:9200 http://192.168.1.13:9200
+
+=== Understanding Scope
+
+Scopes are defined by the Elasticsearch REST API.  Some scopes like
+<tt>/_cluster</tt> or <tt>/nodes</tt> are static and present for all
+Elasticsearch clusters.  Other scopes like <tt>/my_index/my_type</tt>
+depend upon the particular cluster.
 
 Use the +cd+ built-in to move between scopes:
 
-  GET /my_index/my_type > cd /other_index/other_type
-  GET /other_index/other_type > cd ..
-  GET /other_index > cd
-  GET / >
+  GET /$ cd /blog/comments
+  GET /blog/comments$ cd ..
+  GET /blog$ cd /blog/entries
+  GET /blog/entries$ cd
+  GET /$
 
-Tab-complete within a scope after typing +cd+ to see what other scopes
-live under this one.
+==== Different kinds of scopes  
+
+The +ls+ command will show the contents of a given scope:
+
+  GET /$ ls
+  blog _cluster _nodes _status
+
+but the +ll+ command gives more output:
+
+  GET /$ ll
+  i      1/1/0      5  3.3kb blog
+  s                          _cluster
+  s                          _nodes
+  -                          _status
+
+Here you see that +blog+
+
+- is an index (the +i+ in the first column)
+- has 1 total shard, 1 successful shard, and 0 failed shards
+- has 5 documents
+- occupies 3.3kb of space on disk
+
+And, because of the +s+ in the first-column, +_cluster+ and +_nodes+
+are scopes -- you can +cd+ into them.
+
+Finally, +_status+ is a request, you can't +cd+ into it, but you can
+issue it.
+
+If you were to first +cd+ into the index and run +ll+ you'll see
+different output:
+
+  GET /$ cd /blog/ 
+  GET /blog$ ll
+  m                          comments
+  m                          entries
+  -                          _aliases
+  -                          _search
+  -                          _stats
+  -                          _status
+
++_aliases+ and so on are just more requests you can make but
++comments+ and +entries+ are mappings (they have an +m+ in the
+first-column).
 
 === Changing HTTP Verb
 
 You can change Elasticsearch's default HTTP verb by giving it one.
 Here's the same thing in two steps:
 
-  GET / > PUT
-  PUT / > /my_new_index
+  GET /$ PUT
+  PUT /$ /my_new_index
 
-Non-ambiguous shortcuts for HTTP verbs will also work, e.g. - +pu+ in
-this case for +PUT+.
+You can also do this on a per-request basis
+
+  GET /$ PUT /my_new_index
+  GET /$
 
 === Changing Prettiness
 
 Typing +pretty+ at any time will toggle Elasticsearch's
 pretty-printing format on or off.
 
-  GET / > pretty
-  GET / $
+  GET /$ pretty
+  GET /$$
 
-The <tt>$</tt>-sign means it's pretty...
+The extra <tt>$</tt>-sign means it's pretty...
 
-=== Running Commands
+== Making Requests
 
-There are a lot of different ways of telling Elasticsearch what you
-want done.
+Scopes are fine for organizing the API but to get anything done you'll
+have to send a request.
 
-==== Named commands
+=== Named requests
 
-Each scope has different commands, as per the {Elasticsearch API
+Each scope has different fixed, named requests, as per the
+{Elasticsearch API
 documentation}[http://www.elasticsearch.org/guide/reference/api/].
 Within a scope, tab-complete on the first word to see a list of
 possible commands.  Hit enter after a command to see output from
@@ -111,28 +169,32 @@ Elasticsearch.
 
 Here's a command to get the status for the cluster:
 
-  GET / > _status
+  GET /$ _status
 
 Here's a command to get the health of the cluster:
 
-  GET / > cd _cluster
-  GET /_cluster > health
+  GET /$ cd _cluster
+  GET /_cluster$ health
 
-==== Commands with query strings  
+which you could also have issued like this
+
+  GET /$ _cluster/health
+
+=== Using query strings
 
 Commands will also accept a query string, as in this example of a
 search through +my_index+:
 
-  GET /my_index > _search?q=foo+AND+bar
+  GET /my_index$ _search?q=foo+AND+bar
   
-==== Commands with query bodies  
+=== Using a body
 
-In this example the query <tt>foo AND bar</tt> was passed via the
+In the above example the query <tt>foo AND bar</tt> was passed via the
 query string part of a URL.  Passing a more complex query requires we
 put the query in the body of the request.  If you're willing to forego
 using spaces you can do this right on the same line:
 
-  GET /my_index > _search {"query":{"query_string":{"query":"foo"}}}
+  GET /my_index$ _search {"query":{"query_string":{"query":"foo"}}}
 
 But if you want more expressiveness you can either name a file (with
 tab-completion) that contains the body you want:
@@ -148,12 +210,12 @@ tab-completion) that contains the body you want:
 	  
 followed by
 
-  GET /my_index > _search /tmp/query.json
+  GET /my_index$ _search /tmp/query.json
 
 Or you can do +cat+-style, pasting the query into the shell, by using
 the <tt>-</tt> character:
 
-  GET /my_index > _search -
+  GET /my_index$ _search -
   {
     "query": {
       "query_string: {
@@ -165,38 +227,40 @@ the <tt>-</tt> character:
 Don't forget to use <tt>Ctrl-D</tt> to send an +EOF+ to flush the
 input of the query.
 
-==== Arbitrary commands
+=== Redirecting output
 
-You can send an arbitrary HTTP request to Elasticsearch, just spell
-the command with a leading slash:
+You can redirect the output from a request in a variety of ways.
 
-  GET / > /my_index/_search?q=foo+AND+bar
+Most simply is to redirect to a file:
 
-You can specify a different HTTP verb by prefixing it before the path
-you send the request to.  Here's how to create an index using a +PUT+
-request:
+ GET /my_index$ _search /tmp/query_with_lots_of_output.json > /data/output_file.json
 
-  GET / > PUT /my_new_index
+Or you can try sending it to Ruby itself:
 
-You can also change Elasticsearch's default HTTP verb by giving it
-one.  Here's the same thing in two steps:
+  GET /my_index$ _search /tmp/query_that_needs_filtering.json | puts response["hits"]["hits"].first["body"]
 
-  GET / > PUT
-  PUT / > /my_new_index
+Everything to the right of the +|+ is executing within a Ruby process
+that has the +response+ and +request+ variables in scope.  You can be
+even more free by just piping without any Ruby code, which will leave
+you in a Ruby (Pry) shell with the same binding.
 
-Non-ambiguous shortcuts for HTTP verbs will also work, e.g. - +pu+ in
-this case for +PUT+.
+GET /my_index$ _search /tmp/query_that_needs_interaction.json | 
+>> response
+=> {"took"=>1, "timed_out"=>false, ... }
+>> request
+=> {:verb=>"GET", :path=>"/_search", :query_options=>{}, :body=>""}
 
-=== Running just a single command
+=== Requests from the command line
 
 Instead of running Elasticshell interactively, you can exit after
-running only a single command by using the <tt>--only</tt> option on
-startup.  For example,
+running only a single command by feeding the request path directly to
+the +es+ script.  For example
 
-  $ es --only /_cluster/health
+  $ es /_cluster/health
+  $ es --scope=/_cluster health
+  $ es --verb=GET /_cluster/health
 
-will output the cluster health and exit immediately.  This can be
-combined with the <tt>--pretty</tt> option for readability.
+all work like you think they do.
 
 The <tt>--only</tt> option can also be passed a <tt>.</tt>-separated
 hierarchical list of keys to slice into the resulting object.  This is

@@ -19,7 +19,20 @@ module Elasticshell
       end
 
       def pipe?
-        pipe_to_ruby? || pipe_to_irb?
+        pipe_to_ruby? || pipe_to_irb? || pipe_to_file?
+      end
+
+      def pipe_to_file?
+        input =~ /\s>\s*.+$/
+      end
+
+      def output_filename
+        input =~ /\s>\s*(.+)$/
+        $1
+      end
+
+      def pipe_to_file!
+        File.open(output_filename, 'w') { |f| f.puts response.to_s }
       end
       
       def pipe_to_irb?
@@ -54,6 +67,8 @@ module Elasticshell
           irb!
         when pipe_to_ruby?
           ruby!
+        when pipe_to_file?
+          pipe_to_file!
         else
           shell.print(response)
         end
