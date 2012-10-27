@@ -40,21 +40,21 @@ module Elasticshell
           when scope.class == Scopes::Index && scope.mappings.include?(scope_name)
             shell.print("m                          \e[32m%s\e[0m" % [scope_name])
           else
-            shell.print shell.format(:scope_long_format, "%s", scope_name)
+            shell.print Elasticshell.format(:scope_long_format, "%s", scope_name)
           end
         end
         sort(scope.request_names).each do |request|
-          shell.print shell.format(:request_long_format, "%r", request)
+          shell.print Elasticshell.format(:request_long_format, "%r", request)
         end
       end
 
       def ls!
         output = []
         sort(scope.scopes).map do |scope|
-          output << shell.format(:scope_format, "%s", scope)
+          output << Elasticshell.format(:scope_format, "%s", scope)
         end
         sort(scope.request_names).map do |request|
-          output << shell.format(:request_format, "%r", request)
+          output << Elasticshell.format(:request_format, "%r", request)
         end
         shell.print output.join(' ')
       end

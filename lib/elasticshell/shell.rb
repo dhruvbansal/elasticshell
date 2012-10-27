@@ -62,7 +62,7 @@ module Elasticshell
     
     include Elasticshell::HasVerb
 
-    attr_accessor :client, :state, :only, :input, :cache, :output, :error, :line, :input_stream
+    attr_accessor :client, :state, :only, :ruby_code, :input, :cache, :output, :line, :input_stream
 
     attr_reader :scope
     def scope= scope
@@ -91,9 +91,9 @@ module Elasticshell
       self.verb   = (options[:verb] || 'GET')
       self.scope  = scope_from_path(options[:scope] || '/')
       self.only   = options[:only]
+      self.ruby_code = options[:eval]
       self.input_stream  = (options[:input]  || $stdin)
       self.output = (options[:output] || $stdout)
-      self.error  = (options[:error]  || $stderr)
       self.line   = 0
       @log_requests = (options[:log_requests] == false ? false : true)
       pretty! if options[:pretty]
@@ -107,22 +107,14 @@ module Elasticshell
       end
     end
 
-    def format name, codes, values
-      cs = [codes].flatten
-      vs = [values].flatten
-      raise ArgumentError.new("Must provide the same number of format codes as value strings.") unless cs.length == vs.length
-      Settings[name].dup.tap do |s|
-        cs.each_with_index do |c, index|
-          v = vs[index]
-          s.gsub!(c, v)
-        end
-      end
+    def prompt
+      verb_string  = self.class.formatted_verb(verb)
+      scope_string = Elasticshell.format((scope.exists? ? :existing_scope_format : :missing_scope_format), "%s", scope.path)
+      Elasticshell.format((pretty? ? :pretty_prompt_format : :prompt_format), ["%s", "%v"], [scope_string, verb_string])
     end
 
-    def prompt
-      verb_string  = format((verb =~ /^(?:G|H)/i ? :passive_http_verb_format : :active_http_verb_format), "%v", verb)
-      scope_string = format((scope.exists? ? :existing_scope_format : :missing_scope_format), "%s", scope.path)
-      format((pretty? ? :pretty_prompt_format : :prompt_format), ["%s", "%v"], [scope_string, verb_string])
+    def self.formatted_verb verb
+      Elasticshell.format((verb.to_s =~ /^(?:G|H)/i ? :passive_http_verb_format : :active_http_verb_format), "%v", verb.to_s.upcase)
     end
     
     def pretty?
@@ -164,7 +156,7 @@ EOF
     end
 
     def connect
-      eval_line("connect #{@initial_servers.join(',')}")
+      eval_line("connect #{@initial_servers.join(' ')}")
     end
 
     def loop
@@ -181,7 +173,7 @@ EOF
         self.input = line.strip
         command.evaluate!
       rescue ::Elasticshell::Error => e
-        error.puts e.message
+        Elasticshell.error e.message
       end
       self.state = :read
       self.line += 1
@@ -212,7 +204,7 @@ EOF
         format_only_part_of(obj)
       when obj.nil?
         nil
-      when String, Fixnum
+      when obj.is_a?(String) || obj.is_a?(Fixnum)
         obj
       when pretty?
         JSON.pretty_generate(obj)

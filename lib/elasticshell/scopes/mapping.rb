@@ -19,6 +19,7 @@ module Elasticshell
           "GET" => {
             "_search"  => "Search records within this mapping.",
             "_mapping" => "Retrieve the mapping settings for this mapping.",
+            "_count"   => "Count records within this mapping.",
           }
         }
       end

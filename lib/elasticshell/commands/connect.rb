@@ -13,17 +13,29 @@ module Elasticshell
         if servers.empty?
           shell.client.connect()
         else
-          servers.each do |server|
+          uris = servers.map do |raw|
+            has_port = raw =~ /:\d+/
+            cooked  = (raw =~ /^http:\/\// ? raw : 'http://' + raw)
+            cooked += '/' unless cooked =~ /\/$/
             begin
-              uri = URI.parse(server + "/")
+              uri = URI.parse(cooked)
+              if uri.path == '/'
+                uri.port = 9200 unless has_port
+                uri.to_s
+              else
+                Elasticshell.warn("#{raw} is not a valid URI for an ElasticSearch server")
+                nil
+              end
             rescue => e
-              raise ArgumentError.new("#{server} is not a valid URI")
+              Elasticshell.warn("#{raw} is not a valid URI")
+              nil
             end
-            raise ArgumentError.new("#{server} is not a valid URI for an ElasticSearch server") unless uri.path == '/'
-          end
-          shell.client.connect(:servers => servers)
+          end.compact
+          shell.client.connect(:servers => uris)
         end
       end
+
+      
 
     end
   end

@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Commands::Request do
 
   before do
-    @shell  = Shell.new(:output => FakeOutput.new, :error => FakeOutput.new, :input => FakeOutput.new )
+    @shell  = Shell.new(:output => FakeOutput.new, :input => FakeOutput.new )
     @shell.stub!(:connected?).and_return(true)
   end
 

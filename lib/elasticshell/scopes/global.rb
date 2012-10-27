@@ -14,7 +14,8 @@ module Elasticshell
       def self.requests
         @requests ||= {
           "GET" => {
-            '_status'  => "Retreive the status of all indices in the cluster."
+            '_status'  => "Retreive the status of all indices in the cluster.",
+            '_count'   => "Count all records."
           }
         }
       end

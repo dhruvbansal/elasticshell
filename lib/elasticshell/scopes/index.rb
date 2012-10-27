@@ -21,6 +21,7 @@ module Elasticshell
             "_status"  => "Retrieve the status of this index.",
             "_stats"   => "Retrieve usage stats for this index.",
             "_search"  => "Search records within this index.",
+            "_count"   => "Count records within this index."
           }
         }
       end

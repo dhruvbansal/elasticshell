@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
 
 require 'elasticshell'
+require 'elasticshell/runner'
 Elasticshell.start

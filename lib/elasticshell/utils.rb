@@ -1,5 +1,6 @@
 require 'elasticshell/utils/error'
 require 'elasticshell/utils/log'
+require 'elasticshell/utils/es_config'
 
 module Elasticshell
 

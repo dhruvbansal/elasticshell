@@ -1,4 +1,5 @@
 require 'rubberband'
+require 'timeout'
 
 module Elasticshell
 
@@ -9,11 +10,21 @@ module Elasticshell
     end
 
     def connect options={}
-      servers = (options.merge(@options)[:servers] || Settings[:servers].to_s.split(","))
+      servers = (@options.merge(options)[:servers] || Settings[:servers].to_s.split(","))
+      raise ClientError.new("Must provide at least one server to connect to.") if servers.empty?
       begin
-        @client = ElasticSearch::Client.new(servers)
+        Elasticshell.debug("Connecting to Elasticsearch servers: #{servers.join(', ')}")
+        begin
+          timeout(5) do
+            @client = ElasticSearch::Client.new(servers)
+          end
+        rescue Timeout::Error => e
+          Elasticshell.error("Could not connect to Elasticsearch servers: #{servers.join(', ')}")
+          return
+        end
+        Elasticshell.info("Connected to Elasticsearch servers: #{servers.join(', ')}")
       rescue ElasticSearch::ConnectionFailed => e
-        raise ClientError.new("Could not connect to Elasticsearch server(s) at #{servers.join(',')}")
+        raise ClientError.new("Could not connect to Elasticsearch server: #{servers.join(', ')}")
       end
     end
 
@@ -45,16 +56,16 @@ module Elasticshell
     end
 
     def log_request verb, params, options={}
-      begin
+      # begin
         # FIXME digging way too deep into rubberband here...is it really
-        # necessary?
+      # necessary?
         uri   = @client.instance_variable_get('@connection').send(:generate_uri, params)
         query = @client.instance_variable_get('@connection').send(:generate_query_string, options)
         path  = [uri, query].reject { |s| s.nil? || s.strip.empty? }.join("?").gsub(Regexp.new("^/+"), "/")
-        Elasticshell.log("#{verb.to_s.upcase} #{path}".strip)
-      rescue
-        Elasticshell.log("#{verb.to_s.upcase} #{params.inspect} #{options.inspect}".strip)
-      end
+        Elasticshell.request(verb, @client.current_server, path)
+      # rescue
+      #   Elasticshell.info(verb, path, "#{verb.to_s.upcase} #{params.inspect} #{options.inspect}".strip)
+      # end
     end
 
     def safely verb, params={}, options={}, body=''

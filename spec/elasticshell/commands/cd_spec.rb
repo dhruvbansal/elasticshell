@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Commands::Cd do
 
   before do
-    @shell  = Shell.new(:output => FakeOutput.new, :error => FakeOutput.new)
+    @shell  = Shell.new(:output => FakeOutput.new)
   end
   
   it "should change scope when given an argument" do

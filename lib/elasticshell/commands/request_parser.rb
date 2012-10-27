@@ -60,7 +60,7 @@ module Elasticshell
           when raw_body.nil?
             ''
           when raw_body == '-'
-            command.shell.error.puts("Reading request body from STDIN.  Press `C-d' to terminate input...")
+            Elasticshell.info("Reading request body from STDIN.  Press `C-d' to terminate input...")
             command.shell.input_stream.gets(nil)
           when File.exist?(raw_body)
             File.read(raw_body)

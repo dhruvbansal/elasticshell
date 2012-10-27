@@ -14,7 +14,7 @@ module Elasticshell
     end
 
     def be_connected!
-      raise ClientError.new("Not connected to any Elasticsearch servers.") unless shell.connected?
+      raise ClientError.new("Not connected to any Elasticsearch servers.  Try running\n\n\t#{shell.prompt}connect URI [URI] ...\n\n") unless shell.connected?
     end
 
     def evaluate!
@@ -24,7 +24,7 @@ module Elasticshell
 
   module Commands
     PRIORITY = [].tap do |priority|
-      %w[cd pwd df connect help ls pretty set_verb blank request unknown].each do |command_name|
+      %w[cd pwd df connect help ls pretty set_verb exit blank request unknown].each do |command_name|
         klass_name = command_name.split("_").map(&:capitalize).join("")
         autoload klass_name.to_sym, "elasticshell/commands/#{command_name}"
         priority << klass_name
