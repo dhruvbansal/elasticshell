@@ -74,7 +74,7 @@ you can connect to servers by issuing the +connect+ command:
 === Understanding Scope
 
 Scopes are defined by the Elasticsearch REST API.  Some scopes like
-<tt>/_cluster</tt> or <tt>/nodes</tt> are static and present for all
+<tt>/_cluster</tt> or <tt>/_nodes</tt> are static and present for all
 Elasticsearch clusters.  Other scopes like <tt>/my_index/my_type</tt>
 depend upon the particular cluster.
 
@@ -239,10 +239,10 @@ Or you can try sending it to Ruby itself:
 
   GET /my_index$ _search /tmp/query_that_needs_filtering.json | puts response["hits"]["hits"].first["body"]
 
-Everything to the right of the +|+ is executing within a Ruby process
-that has the +response+ and +request+ variables in scope.  You can be
-even more free by just piping without any Ruby code, which will leave
-you in a Ruby (Pry) shell with the same binding.
+Everything to the right of the <tt>|</tt> is executing within a Ruby
+process that has the +response+ and +request+ variables in scope.  You
+can be even more free by just piping without any Ruby code, which will
+leave you in a Ruby (Pry) shell with the same binding.
 
   GET /my_index$ _search /tmp/query_that_needs_interaction.json | 
   >> response
