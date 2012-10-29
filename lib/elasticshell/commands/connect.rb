@@ -11,7 +11,7 @@ module Elasticshell
       def evaluate!
         servers = (input.split(/\s+/, 2)[1] || '').split(/\s+/)
         if servers.empty?
-          shell.client.connect()
+          shell.client.safely_connect()
         else
           uris = servers.map do |raw|
             has_port = raw =~ /:\d+/
@@ -31,7 +31,7 @@ module Elasticshell
               nil
             end
           end.compact
-          shell.client.connect(:servers => uris)
+          shell.client.safely_connect(:servers => uris)
         end
       end
 

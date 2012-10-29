@@ -9,27 +9,42 @@ module Elasticshell
       @options = options
     end
 
-    def connect options={}
-      servers = (@options.merge(options)[:servers] || Settings[:servers].to_s.split(","))
+    def safely_connect options={}
+      servers = @options.merge(options)[:servers]
       raise ClientError.new("Must provide at least one server to connect to.") if servers.empty?
-      begin
-        Elasticshell.debug("Connecting to Elasticsearch servers: #{servers.join(', ')}")
-        begin
-          timeout(5) do
-            @client = ElasticSearch::Client.new(servers)
-          end
-        rescue Timeout::Error => e
-          Elasticshell.error("Could not connect to Elasticsearch servers: #{servers.join(', ')}")
-          return
-        end
-        Elasticshell.info("Connected to Elasticsearch servers: #{servers.join(', ')}")
-      rescue ElasticSearch::ConnectionFailed => e
-        raise ClientError.new("Could not connect to Elasticsearch server: #{servers.join(', ')}")
-      end
+      connect(servers.dup, first_attempt=true)
     end
 
     def connected?
       @client
+    end
+
+    def safely verb, params={}, options={}, body=''
+      request(verb, params, options.merge(:safely => true))
+    end
+    
+    private
+
+    def connect servers, first_attempt=false
+      string  = servers.join(' ')
+      Elasticshell.debug("Attempting to connect to #{string} ...")         if first_attempt
+      raise ClientError.new("Timed out or failed to connect to #{string}") if servers.empty?
+      begin
+        server = servers.shift
+        timeout(5) do
+          @client = ElasticSearch::Client.new(server)
+          Elasticshell.info("Connected to #{server}")
+        end
+      rescue Timeout::Error => e
+        Elasticshell.debug("Timed out connecting to #{server}")
+        connect(servers)
+      rescue ElasticSearch::ConnectionFailed => e
+        Elasticshell.debug("Failure connecting to #{server}")
+        connect(servers)
+      rescue => e
+        Elasticshell.error("#{e.class} -- #{e.message}")
+        connect(servers)
+      end
     end
 
     def request verb, params={}, options={}, body=''
@@ -50,8 +65,9 @@ module Elasticshell
         end
       end
     end
-
+    
     def perform_request verb, params, options, body
+      # p [verb, params, options, body]
       @client.execute(:standard_request, verb.downcase.to_sym, params, options, body)
     end
 
@@ -68,10 +84,6 @@ module Elasticshell
       # end
     end
 
-    def safely verb, params={}, options={}, body=''
-      request(verb, params, options.merge(:safely => true))
-    end
-  
   end
 
 end

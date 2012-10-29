@@ -61,7 +61,7 @@ module Elasticshell
   end
 
   def self.request verb, host, path
-    log.info(format(:http_request_format, ["%v", "%h", "%p"], [Shell.formatted_verb(verb), host, path]))
+    log.info(format(:http_request_format, ["%v", "%h", "%p"], [verb.to_s.upcase, host, path]))
   end
   
   def self.debug msg

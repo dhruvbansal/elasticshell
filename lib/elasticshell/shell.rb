@@ -108,15 +108,11 @@ module Elasticshell
     end
 
     def prompt
-      verb_string  = self.class.formatted_verb(verb)
+      verb_string  = Elasticshell.format((verb.to_s =~ /^(?:G|H)/i ? :passive_http_verb_format : :active_http_verb_format), "%v", verb.to_s.upcase)
       scope_string = Elasticshell.format((scope.exists? ? :existing_scope_format : :missing_scope_format), "%s", scope.path)
       Elasticshell.format((pretty? ? :pretty_prompt_format : :prompt_format), ["%s", "%v"], [scope_string, verb_string])
     end
 
-    def self.formatted_verb verb
-      Elasticshell.format((verb.to_s =~ /^(?:G|H)/i ? :passive_http_verb_format : :active_http_verb_format), "%v", verb.to_s.upcase)
-    end
-    
     def pretty?
       @pretty
     end
