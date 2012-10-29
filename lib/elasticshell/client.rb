@@ -22,6 +22,25 @@ module Elasticshell
     def safely verb, params={}, options={}, body=''
       request(verb, params, options.merge(:safely => true))
     end
+
+    def request verb, params={}, options={}, body=''
+      raise ClientError.new("Not connected to any Elasticsearch servers.") unless connected?
+      safe        = options.delete(:safely)
+      safe_return = options.delete(:return)
+      
+      # Log by default
+      log_request(verb, params, options) unless options.delete(:log) == false
+      
+      begin
+        perform_request(verb, params, options, body)
+      rescue ElasticSearch::RequestError, ArgumentError => e
+        if safe
+          safe_return
+        else
+          raise ClientError.new(e.message)
+        end
+      end
+    end
     
     private
 
@@ -47,25 +66,6 @@ module Elasticshell
       end
     end
 
-    def request verb, params={}, options={}, body=''
-      raise ClientError.new("Not connected to any Elasticsearch servers.") unless connected?
-      safe        = options.delete(:safely)
-      safe_return = options.delete(:return)
-      
-      # Log by default
-      log_request(verb, params, options) unless options.delete(:log) == false
-      
-      begin
-        perform_request(verb, params, options, body)
-      rescue ElasticSearch::RequestError, ArgumentError => e
-        if safe
-          safe_return
-        else
-          raise ClientError.new(e.message)
-        end
-      end
-    end
-    
     def perform_request verb, params, options, body
       # p [verb, params, options, body]
       @client.execute(:standard_request, verb.downcase.to_sym, params, options, body)

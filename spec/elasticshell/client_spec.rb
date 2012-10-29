@@ -24,7 +24,7 @@ describe Client do
       @client.stub!(:log_request)
       @client.stub!(:perform_request)
       @verb   = "GET"
-      @params = {:op => "/foobar"}
+      @params = {:op => "foobar"}
     end
 
     it "should log all requests by default" do
