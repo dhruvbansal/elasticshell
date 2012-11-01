@@ -15,7 +15,7 @@ module Elasticshell
       end
 
       def perform_request!
-        self.response = shell.client.safely(request[:verb], {:op => request[:path].gsub(/^\//,'') }, request[:query_options].merge(:log => shell.log_requests?), request[:body])
+        self.response = shell.client.request(request[:verb], {:op => request[:path].gsub(/^\//,'') }, request[:query_options].merge(:log => shell.log_requests?), request[:body])
       end
 
       def pipe?
