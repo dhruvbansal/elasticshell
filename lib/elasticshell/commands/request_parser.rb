@@ -29,10 +29,6 @@ module Elasticshell
           self.raw = command.shell.input.gsub(/ (?:\||>).*$/,'')
         end
 
-        def strip_file_redirect!
-          self.raw = command.shell.input.gsub(/ >.*$/,'')
-        end
-        
         def split_verb_and_request!
           if raw =~ Regexp.new("^(#{verb_re})\s+(.+)$", true)
             self.verb, self.request_string = canonicalize_verb($1), $2
