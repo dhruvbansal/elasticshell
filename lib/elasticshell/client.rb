@@ -20,7 +20,7 @@ module Elasticshell
     end
 
     def safely verb, params={}, options={}, body=''
-      request(verb, params, options.merge(:safely => true))
+      request(verb, params, options.merge(:safely => true), body)
     end
 
     def request verb, params={}, options={}, body=''
@@ -46,8 +46,8 @@ module Elasticshell
 
     def connect servers, first_attempt=false
       string  = servers.join(' ')
-      Elasticshell.debug("Attempting to connect to #{string} ...")         if first_attempt
-      raise ClientError.new("Timed out or failed to connect to #{string}") if servers.empty?
+      Elasticshell.debug("Attempting to connect to #{string} ...")           if first_attempt
+      raise ClientError.new("Timed out or failed to connect to any servers") if servers.empty?
       begin
         server = servers.shift
         timeout(5) do
